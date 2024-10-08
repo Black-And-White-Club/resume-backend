@@ -1,0 +1,39 @@
+# Ignore Go build artifacts
+/bin/
+/obj/
+/vendor/
+
+# Ignore local environment configuration files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Ignore Go module cache files (do not ignore these, keep them for build context)
+# *.mod
+# *.sum
+
+# Ignore test files and directories
+*.test
+*_test.go
+**/*_test.go
+coverage.out
+coverage.html
+/tests/
+
+# Ignore IDE and editor files
+.git
+.vscode/
+.idea/
+*.iml
+
+# Ignore temporary files
+.DS_Store
+Thumbs.db
+*.log
+
+# Ignore other files/directories that are not needed in the image
+README.md
+*.md
+.github/
