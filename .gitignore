@@ -3,9 +3,6 @@
 /obj/
 /vendor/
 
-# Dependency directories (remove the comment if you are using Go modules)
-# vendor/
-
 # Go workspace files
 *.exe
 *.exe~
@@ -23,14 +20,6 @@
 # Visual Studio Code
 .vscode/
 *.code-workspace
-
-# GoLand
-.idea/
-*.iml
-
-# JetBrains IDEs
-.idea/
-*.iml
 
 # Sublime Text
 *.sublime-project
@@ -55,3 +44,6 @@ coverage.html
 # Ignore configuration files
 config.yml
 config.yaml
+
+# Go Binary File
+resume-backend

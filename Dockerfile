@@ -15,14 +15,20 @@ COPY . .
 # Set the Go build cache directory
 ENV GOCACHE=/root/.cache/go-build
 
+# Enable CGO
+ENV CGO_ENABLED=1
+
+# Install GCC and SQLite development libraries
+RUN apk add --no-cache build-base sqlite-libs
+
 # Enable caching for the Go build process and specify the output binary path
 RUN --mount=type=cache,target=/root/.cache/go-build go build -o /main/app .
 
 # Stage 2: Create a minimal runtime image
 FROM alpine:latest
 
-# Install runtime dependencies for SQLite (if needed)
-RUN apk --no-cache add sqlite-libs
+# Install runtime dependencies for SQLite 
+RUN apk --no-cache add sqlite-libs 
 
 # Copy the executable from the builder stage
 COPY --from=builder /main/app /main/app
