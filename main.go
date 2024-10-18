@@ -1,14 +1,17 @@
 //go:build !test
+// +build !test
 
 package main
 
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -20,9 +23,26 @@ import (
 
 const apiPath = "/api/count"
 
+// Kubernetes checks on startup
+func healthAndReadyHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.URL.Path {
+	case "/healthz":
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "OK")
+	case "/readyz":
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Ready")
+	default:
+		http.Error(w, "Not Found", http.StatusNotFound)
+	}
+}
+
 func main() {
 	// Initialize logger to write to stdout
 	log.SetOutput(os.Stdout)
+
+	http.HandleFunc("/healthz", healthAndReadyHandler)
+	http.HandleFunc("/readyz", healthAndReadyHandler)
 
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {
@@ -58,9 +78,15 @@ func main() {
 	})
 
 	// Apply middleware in the desired order
-	handler = prometheusMiddleware(handler)   // Wrap with Prometheus middleware
-	handler = loggingMiddleware(handler)      // Logging middleware
-	handler = cors.Default().Handler(handler) // CORS middleware
+	handler = prometheusMiddleware(handler) // Wrap with Prometheus middleware
+	handler = loggingMiddleware(handler)    // Logging middleware
+
+	corsHandler := cors.New(cors.Options{
+		AllowedOrigins: strings.Split(os.Getenv("ALLOWED_ORIGINS"), ","),
+		AllowedMethods: []string{http.MethodGet, http.MethodPost},
+		AllowedHeaders: []string{"Authorization", "Content-Type"},
+	})
+	handler = corsHandler.Handler(handler)
 
 	// Apply origin check middleware for production
 	if os.Getenv("APP_ENV") == "prod" {
