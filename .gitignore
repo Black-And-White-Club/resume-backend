@@ -47,3 +47,5 @@ config.yaml
 
 # Go Binary File
 resume-backend
+
+visits.db
