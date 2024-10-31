@@ -9,8 +9,8 @@ import (
 )
 
 // incrementVisitCount increments the visit count in the database.
-func incrementVisitCount(w http.ResponseWriter, _ *http.Request, dataStore DataStore) {
-	err := dataStore.IncrementVisitCount(time.Now())
+func incrementVisitCount(w http.ResponseWriter, r *http.Request, dataStore DataStore) {
+	err := dataStore.IncrementVisitCount(r.Context(), time.Now()) // Pass the request context
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to increment visit count: %v", err), http.StatusInternalServerError)
 		return
@@ -28,8 +28,8 @@ func incrementVisitCount(w http.ResponseWriter, _ *http.Request, dataStore DataS
 }
 
 // getVisitCount retrieves the visit count from the database.
-func getVisitCount(w http.ResponseWriter, _ *http.Request, dataStore DataStore) {
-	count, err := dataStore.GetVisitCount()
+func getVisitCount(w http.ResponseWriter, r *http.Request, dataStore DataStore) {
+	count, err := dataStore.GetVisitCount(r.Context()) // Pass the request context
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to get visit count: %v", err), http.StatusInternalServerError)
 		return

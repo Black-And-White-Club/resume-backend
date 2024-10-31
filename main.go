@@ -5,7 +5,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -17,8 +16,6 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/rs/cors"
-
-	_ "github.com/mattn/go-sqlite3"
 )
 
 const apiPath = "/api/count"
@@ -58,18 +55,12 @@ func main() {
 	initPrometheusMetrics()
 
 	// Database setup
-	db, err := sql.Open("sqlite3", "visits.db")
+	ctx := context.Background()
+	dataStore, err := SetupDatabase(ctx) // Use SetupDatabase to initialize PostgreSQL DataStore
 	if err != nil {
-		log.Fatalf("failed to open database connection: %v", err)
+		log.Fatalf("failed to set up database: %v", err)
 	}
-
-	// Configure connection pool
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(time.Minute * 5)
-
-	// Create the DataStore
-	dataStore := NewSQLiteDataStore(db)
+	defer dataStore.Close() // Ensure the database connection is closed
 
 	// Create the handler with dependency injection
 	var handler http.Handler

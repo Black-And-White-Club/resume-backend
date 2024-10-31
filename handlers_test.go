@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -13,14 +14,16 @@ type MockDataStore struct {
 	visitCount int
 }
 
-func (m *MockDataStore) IncrementVisitCount(timestamp time.Time) error {
+func (m *MockDataStore) IncrementVisitCount(ctx context.Context, timestamp time.Time) error {
 	m.visitCount++
 	return nil
 }
 
-func (m *MockDataStore) GetVisitCount() (int, error) {
+func (m *MockDataStore) GetVisitCount(ctx context.Context) (int, error) {
 	return m.visitCount, nil
 }
+
+func (m *MockDataStore) Close() {}
 
 func Test_incrementVisitCount(t *testing.T) {
 	mockDataStore := &MockDataStore{}
