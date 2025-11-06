@@ -38,10 +38,10 @@ jobs:
       - name: Publish image with ko
         env:
           KO_DOCKER_REPO: ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/resume
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          IMAGE_TAG: ${{ env.COMMIT_SHORT_SHA }}
         run: |
-          # publish with component-prefixed tag and a moving 'backend-latest' tag
-          ko publish --tags ${IMAGE_TAG},backend-latest ./
+          # publish with short SHA tag for Argo Image Updater compatibility
+          ko publish --tags ${IMAGE_TAG} --bare ./backend
 
       - name: Checkout Infrastructure repo to update image tag
         uses: actions/checkout@v4
@@ -53,10 +53,10 @@ jobs:
       - name: Update image tag in backend manifest
         run: |
           cd resume-infrastructure
-          # replace image tag for resume backend (assumes image: <registry>/<namespace>/resume:tag)
-          sed -i -E 's|(image:\s*.*resume:).*|\1${{ env.IMAGE_TAG }}|' resume-app-manifests/resume-backend.yaml || true
+          # Update image to iad.ocir.io/id2uwn5pyixh/resume/backend:SHORTSHA
+          sed -i -E 's|(image:\s*iad\.ocir\.io/id2uwn5pyixh/resume/backend:).*|\1${{ env.COMMIT_SHORT_SHA }}|' resume-app-manifests/resume-backend.yaml || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add resume-app-manifests/resume-backend.yaml || true
-          git commit -m "Update resume-backend image to ${{ env.IMAGE_TAG }}" || echo "no changes"
+          git commit -m "Update resume-backend image to ${{ env.COMMIT_SHORT_SHA }}" || echo "no changes"
           git push origin main
