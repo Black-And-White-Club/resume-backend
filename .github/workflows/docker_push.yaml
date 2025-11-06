@@ -59,4 +59,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add resume-app-manifests/resume-backend.yaml || true
           git commit -m "Update resume-backend image to ${{ env.IMAGE_TAG }}" || echo "no changes"
-          git push origin main || echo "push failed"
+          git push origin main
