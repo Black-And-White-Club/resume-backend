@@ -41,7 +41,7 @@ jobs:
           IMAGE_TAG: ${{ env.COMMIT_SHORT_SHA }}
         run: |
           # publish with short SHA tag for Argo Image Updater compatibility
-          ko publish --tags ${IMAGE_TAG} --bare ./backend
+          ko publish --tags ${IMAGE_TAG} --bare .
 
       - name: Checkout Infrastructure repo to update image tag
         uses: actions/checkout@v4
