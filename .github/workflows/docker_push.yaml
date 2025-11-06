@@ -21,8 +21,7 @@ jobs:
       - name: Set up Go (if needed for ko builds)
         uses: actions/setup-go@v4
         with:
-          go-version: "1.23"
-          cache: false
+          go-version: "1.20"
 
       - name: Log in to OCIR
         uses: docker/login-action@v3
