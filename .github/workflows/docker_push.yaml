@@ -8,8 +8,6 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     env:
-      ACTIONS_STEP_DEBUG: true
-      ACTIONS_RUNNER_DEBUG: true
       OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
       OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
       OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
@@ -32,7 +30,7 @@ jobs:
         with:
           go-version: "1.23"
 
-      - name: Get or create OCIR backend repo
+      - name: Get OCIR resume repo
         uses: oracle-actions/get-ocir-repository@v1.3.0
         id: get-ocir-repository
         with:
