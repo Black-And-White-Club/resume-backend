@@ -56,30 +56,8 @@ jobs:
         env:
           OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
 
-      - name: Runner-side OCI CLI repo check (debug)
-        if: always()
-        run: |
-          set -x
-          export OCI_CLI_KEY_FILE="$HOME/.oci/oci_api_key.pem"
-          export OCI_CLI_REGION="${OCI_CLI_REGION}"
-          export OCI_CLI_USER="${OCI_CLI_USER}"
-          export OCI_CLI_TENANCY="${OCI_CLI_TENANCY}"
-          # List repositories with matching display-name to verify access
-          oci artifacts container repository list \
-            --compartment-id "${OCI_COMPARTMENT_OCID}" \
-            --query "data[?\"display-name\"=='resume']" --output json || true
-        env:
-          OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
-          OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
-          OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
-          OCI_COMPARTMENT_OCID: ${{ secrets.OCI_COMPARTMENT_OCID }}
-
-      - name: Get OCIR resume repo
-        uses: oracle-actions/get-ocir-repository@v1.3.0
-        id: get-ocir-repository
-        with:
-          name: resume
-          compartment: ${{ secrets.OCI_COMPARTMENT_OCID }}
+      - name: Use OCIR repo path from secrets
+        run: echo "Using OCIR repo path from secrets"
 
       - name: Log in to OCIR
         uses: oracle-actions/login-ocir@v1.3.0
@@ -89,11 +67,11 @@ jobs:
       - name: Set up ko
         uses: ko-build/setup-ko@v0.9
         env:
-          KO_DOCKER_REPO: ${{ steps.get-ocir-repository.outputs.repo_path }}
+          KO_DOCKER_REPO: ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/resume
 
       - name: Publish image with ko
         env:
-          KO_DOCKER_REPO: ${{ steps.get-ocir-repository.outputs.repo_path }}
+          KO_DOCKER_REPO: ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/resume
           IMAGE_TAG: ${{ env.COMMIT_SHORT_SHA }}
         run: |
           ko publish --tags ${IMAGE_TAG} --bare .
