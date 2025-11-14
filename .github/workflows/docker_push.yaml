@@ -59,10 +59,12 @@ jobs:
       - name: Use OCIR repo path from secrets
         run: echo "Using OCIR repo path from secrets"
 
-      - name: Log in to OCIR
-        uses: oracle-actions/login-ocir@v1.3.0
+      - name: Log in to OCIR (Docker login)
+        uses: docker/login-action@v3
         with:
-          auth_token: ${{ secrets.OCI_AUTH_TOKEN }}
+          registry: ${{ secrets.OCI_REGION }}.ocir.io
+          username: ${{ secrets.OCI_TENANCY_NAMESPACE }}/${{ secrets.OCI_USERNAME }}
+          password: ${{ secrets.OCI_AUTH_TOKEN }}
 
       - name: Set up ko
         uses: ko-build/setup-ko@v0.9
