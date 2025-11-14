@@ -30,6 +30,50 @@ jobs:
         with:
           go-version: "1.23"
 
+      - name: Install OCI CLI for runner-side debugging
+        if: always()
+        run: |
+          python -m pip install --upgrade pip
+          pip install oci-cli
+        env:
+          OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+          OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+          OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+          OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+          OCI_CLI_REGION: ${{ secrets.OCI_REGION }}
+
+      - name: Write OCI key file and basic check (debug)
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.oci"
+          printf '%s' "$OCI_CLI_KEY_CONTENT" > "$HOME/.oci/oci_api_key.pem"
+          chmod 600 "$HOME/.oci/oci_api_key.pem"
+          echo '--- PEM head (first 5 lines) ---'
+          sed -n '1,5p' "$HOME/.oci/oci_api_key.pem" || true
+          echo '--- PEM tail (last 5 lines) ---'
+          tail -n 5 "$HOME/.oci/oci_api_key.pem" || true
+        env:
+          OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+
+      - name: Runner-side OCI CLI repo check (debug)
+        if: always()
+        run: |
+          set -x
+          export OCI_CLI_KEY_FILE="$HOME/.oci/oci_api_key.pem"
+          export OCI_CLI_REGION="${OCI_CLI_REGION}"
+          export OCI_CLI_USER="${OCI_CLI_USER}"
+          export OCI_CLI_TENANCY="${OCI_CLI_TENANCY}"
+          # List repositories with matching display-name to verify access
+          oci artifacts container repository list \
+            --compartment-id "${OCI_COMPARTMENT_OCID}" \
+            --query "data[?\"display-name\"=='resume']" --output json || true
+        env:
+          OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+          OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+          OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
+          OCI_COMPARTMENT_OCID: ${{ secrets.OCI_COMPARTMENT_OCID }}
+
       - name: Get OCIR resume repo
         uses: oracle-actions/get-ocir-repository@v1.3.0
         id: get-ocir-repository
