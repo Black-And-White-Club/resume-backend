@@ -1,0 +1,9 @@
+ko:
+  # Base import path to use for image names when not using --bare
+  baseImportPath: "us-ashburn-1.ocir.io/id2uwn5pyixh/resume"
+  # Default base image for static Go binaries
+  defaultBaseImage: "cgr.dev/chainguard/static:latest"
+  # Default multi-platform build targets (optional)
+  defaultPlatforms:
+    - linux/amd64
+    - linux/arm64

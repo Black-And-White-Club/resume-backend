@@ -42,10 +42,35 @@ jobs:
       - name: Set up ko
         uses: ko-build/setup-ko@v0.9
         env:
-          KO_DOCKER_REPO: ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/resume
+          # Push directly to resume/backend so the resulting image repo matches our manifest
+          KO_DOCKER_REPO: ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/resume/backend
 
       - name: Publish image with ko
         env:
-          KO_DOCKER_REPO: ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/resume
+          # Ensure the pushed image repo path matches the manifest targeting us-ashburn-1.ocir.io/.../resume/backend
+          KO_DOCKER_REPO: ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/resume/backend
         run: |
-          ko publish --tags ${COMMIT_SHORT_SHA} --bare .
+          set -euo pipefail
+          REGISTRY=${{ secrets.OCI_REGION }}.ocir.io
+          TENANCY=${{ secrets.OCI_TENANCY_NAMESPACE }}
+          # Run ko publish and write a mapping of import path -> image reference to a YAML file
+          IMAGE_REFS_FILE=/tmp/ko-image-refs.yaml
+          echo "Publishing backend image(s) under ${REGISTRY}/${TENANCY}"
+          ko publish --tags ${COMMIT_SHORT_SHA} --image-refs ${IMAGE_REFS_FILE} --bare .
+          echo "ko publish wrote image refs to ${IMAGE_REFS_FILE}"
+          echo "Contents:"
+          cat ${IMAGE_REFS_FILE}
+
+          # Parse first image ref from the YAML (script-friendly extraction)
+          IMAGE_REF=$(awk -F': ' 'NF>=2{print $2; exit}' ${IMAGE_REFS_FILE})
+          if [ -z "${IMAGE_REF}" ]; then
+            echo "ERROR: could not parse image ref from ${IMAGE_REFS_FILE}" >&2
+            exit 1
+          fi
+
+          echo "Discovered image ref: ${IMAGE_REF}"
+          echo "Verifying image pull: ${IMAGE_REF}"
+          docker pull "${IMAGE_REF}"
+          echo "Image pull succeeded: ${IMAGE_REF}"
+          # Export for any following steps or job outputs if needed
+          echo "image_ref=${IMAGE_REF}" >> $GITHUB_OUTPUT
