@@ -23,41 +23,14 @@ jobs:
         run: |
           shortSha=$(git rev-parse --short ${{ github.sha }})
           echo "COMMIT_SHORT_SHA=$shortSha" >> $GITHUB_ENV
-          echo "IMAGE_TAG=backend-${shortSha}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${shortSha}" >> $GITHUB_ENV
 
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: "1.23"
 
-      - name: Install OCI CLI for runner-side debugging
-        if: always()
-        run: |
-          python -m pip install --upgrade pip
-          pip install oci-cli
-        env:
-          OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
-          OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
-          OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
-          OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
-          OCI_CLI_REGION: ${{ secrets.OCI_REGION }}
-
-      - name: Write OCI key file and basic check (debug)
-        if: always()
-        run: |
-          set -euo pipefail
-          mkdir -p "$HOME/.oci"
-          printf '%s' "$OCI_CLI_KEY_CONTENT" > "$HOME/.oci/oci_api_key.pem"
-          chmod 600 "$HOME/.oci/oci_api_key.pem"
-          echo '--- PEM head (first 5 lines) ---'
-          sed -n '1,5p' "$HOME/.oci/oci_api_key.pem" || true
-          echo '--- PEM tail (last 5 lines) ---'
-          tail -n 5 "$HOME/.oci/oci_api_key.pem" || true
-        env:
-          OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
-
-      - name: Use OCIR repo path from secrets
-        run: echo "Using OCIR repo path from secrets"
+      # Removed debug steps (OCI CLI install and key dump) — not needed in CI for publishing.
 
       - name: Log in to OCIR (Docker login)
         uses: docker/login-action@v3
@@ -74,6 +47,5 @@ jobs:
       - name: Publish image with ko
         env:
           KO_DOCKER_REPO: ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/resume
-          IMAGE_TAG: ${{ env.COMMIT_SHORT_SHA }}
         run: |
-          ko publish --tags ${IMAGE_TAG} --bare .
+          ko publish --tags ${COMMIT_SHORT_SHA} --bare .
