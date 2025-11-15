@@ -61,14 +61,30 @@ jobs:
           echo "Contents:"
           cat ${IMAGE_REFS_FILE}
 
-          # Parse first image ref from the YAML (script-friendly extraction)
-          IMAGE_REF=$(awk -F': ' 'NF>=2{print $2; exit}' ${IMAGE_REFS_FILE})
+          # Parse first non-empty line from the image refs file (supports both 'importpath: image' and plain image formats)
+          RAW_LINE=$(awk 'NF{print; exit}' ${IMAGE_REFS_FILE} | sed -e 's/^\s*//' -e 's/\s*$//')
+          if echo "${RAW_LINE}" | grep -q ': '; then
+            # Format: importpath: image
+            IMAGE_REF=$(echo "${RAW_LINE}" | awk -F': ' '{print $2}' | sed -e 's/^\s*//' -e 's/\s*$//')
+          else
+            # Format: just image ref
+            IMAGE_REF="${RAW_LINE}"
+          fi
           if [ -z "${IMAGE_REF}" ]; then
             echo "ERROR: could not parse image ref from ${IMAGE_REFS_FILE}" >&2
+            echo "Contents of ${IMAGE_REFS_FILE}:" >&2
+            cat ${IMAGE_REFS_FILE} >&2
             exit 1
           fi
 
           echo "Discovered image ref: ${IMAGE_REF}"
+          # Also extract the tag (short sha) if possible (format: :<shortSha> or :<shortSha>@)
+          IMAGE_TAG=$(echo "${IMAGE_REF}" | sed -E 's|.*:([0-9a-f]{7})(@.+)?$|\1|') || true
+          if [ -n "${IMAGE_TAG}" ]; then
+            echo "Detected tag: ${IMAGE_TAG} (expected: ${COMMIT_SHORT_SHA})"
+          else
+            echo "No 7-char SHA tag detected in image ref; the ref may use a full digest only"
+          fi
           echo "Verifying image pull: ${IMAGE_REF}"
           docker pull "${IMAGE_REF}"
           echo "Image pull succeeded: ${IMAGE_REF}"
