@@ -8,11 +8,8 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     env:
-      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
-      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
-      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
-      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
-      OCI_CLI_REGION: ${{ secrets.OCI_REGION }}
+      OCI_REGION: ${{ secrets.OCI_REGION }}
+      OCI_TENANCY_NAMESPACE: ${{ secrets.OCI_TENANCY_NAMESPACE }}
 
     steps:
       - name: Checkout
@@ -51,15 +48,11 @@ jobs:
           KO_DOCKER_REPO: ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/resume/backend
         run: |
           set -euo pipefail
-          REGISTRY=${{ secrets.OCI_REGION }}.ocir.io
-          TENANCY=${{ secrets.OCI_TENANCY_NAMESPACE }}
+          REGISTRY=${OCI_REGION}.ocir.io
+          TENANCY=${OCI_TENANCY_NAMESPACE}
           # Run ko publish and write a mapping of import path -> image reference to a YAML file
           IMAGE_REFS_FILE=/tmp/ko-image-refs.yaml
-          echo "Publishing backend image(s) under ${REGISTRY}/${TENANCY}"
           ko publish --tags ${COMMIT_SHORT_SHA} --image-refs ${IMAGE_REFS_FILE} --bare .
-          echo "ko publish wrote image refs to ${IMAGE_REFS_FILE}"
-          echo "Contents:"
-          cat ${IMAGE_REFS_FILE}
 
           # Parse first non-empty line from the image refs file (supports both 'importpath: image' and plain image formats)
           RAW_LINE=$(awk 'NF{print; exit}' ${IMAGE_REFS_FILE} | sed -e 's/^\s*//' -e 's/\s*$//')
@@ -72,19 +65,12 @@ jobs:
           fi
           if [ -z "${IMAGE_REF}" ]; then
             echo "ERROR: could not parse image ref from ${IMAGE_REFS_FILE}" >&2
-            echo "Contents of ${IMAGE_REFS_FILE}:" >&2
-            cat ${IMAGE_REFS_FILE} >&2
             exit 1
           fi
 
           echo "Discovered image ref: ${IMAGE_REF}"
-          # Also extract the tag (short sha) if possible (format: :<shortSha> or :<shortSha>@)
+          # Optionally, extract tag for automation, but do not print extra debug lines.
           IMAGE_TAG=$(echo "${IMAGE_REF}" | sed -E 's|.*:([0-9a-f]{7})(@.+)?$|\1|') || true
-          if [ -n "${IMAGE_TAG}" ]; then
-            echo "Detected tag: ${IMAGE_TAG} (expected: ${COMMIT_SHORT_SHA})"
-          else
-            echo "No 7-char SHA tag detected in image ref; the ref may use a full digest only"
-          fi
           echo "Verifying image pull: ${IMAGE_REF}"
           docker pull "${IMAGE_REF}"
           echo "Image pull succeeded: ${IMAGE_REF}"
