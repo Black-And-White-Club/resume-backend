@@ -83,19 +83,29 @@ func createTable(ctx context.Context, pool DatabasePool) error {
 
 // SetupDatabase initializes and configures the database
 func SetupDatabase(ctx context.Context) (DataStore, error) {
-	dbUser, _ := mustGetenv("DB_USER")         // Ignoring the error
-	dbPassword, _ := mustGetenv("DB_PASSWORD") // Ignoring the error
-	dbHost, _ := mustGetenv("DB_HOST")         // Ignoring the error
-	dbPort, _ := mustGetenv("DB_PORT")         // Ignoring the error
-	dbName, _ := mustGetenv("DB_NAME")         // Ignoring the error
+	// Try DATABASE_URL first, fall back to individual env vars
+	databaseURL := os.Getenv("DATABASE_URL")
 
-	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
-		dbUser,
-		dbPassword,
-		dbHost,
-		dbPort,
-		dbName,
-	)
+	var connString string
+	if databaseURL != "" {
+		// Use DATABASE_URL directly
+		connString = databaseURL
+	} else {
+		// Fall back to individual env vars for backward compatibility
+		dbUser, _ := mustGetenv("DB_USER")         // Ignoring the error
+		dbPassword, _ := mustGetenv("DB_PASSWORD") // Ignoring the error
+		dbHost, _ := mustGetenv("DB_HOST")         // Ignoring the error
+		dbPort, _ := mustGetenv("DB_PORT")         // Ignoring the error
+		dbName, _ := mustGetenv("DB_NAME")         // Ignoring the error
+
+		connString = fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
+			dbUser,
+			dbPassword,
+			dbHost,
+			dbPort,
+			dbName,
+		)
+	}
 
 	config, err := pgxpool.ParseConfig(connString)
 	if err != nil {
