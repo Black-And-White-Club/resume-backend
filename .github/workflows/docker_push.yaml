@@ -52,7 +52,7 @@ jobs:
           TENANCY=${OCI_TENANCY_NAMESPACE}
           # Run ko publish and write a mapping of import path -> image reference to a YAML file
           IMAGE_REFS_FILE=/tmp/ko-image-refs.yaml
-          ko publish --tags ${COMMIT_SHORT_SHA} --image-refs ${IMAGE_REFS_FILE} --bare .
+          ko publish --platform=linux/amd64,linux/arm64 --tags ${COMMIT_SHORT_SHA} --image-refs ${IMAGE_REFS_FILE} --bare .
 
           # Parse first non-empty line from the image refs file (supports both 'importpath: image' and plain image formats)
           RAW_LINE=$(awk 'NF{print; exit}' ${IMAGE_REFS_FILE} | sed -e 's/^\s*//' -e 's/\s*$//')
