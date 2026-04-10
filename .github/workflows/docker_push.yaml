@@ -20,7 +20,7 @@ jobs:
         run: |
           shortSha=$(git rev-parse --short ${{ github.sha }})
           echo "COMMIT_SHORT_SHA=$shortSha" >> $GITHUB_ENV
-          echo "IMAGE_TAG=${shortSha}" >> $GITHUB_ENV
+          echo "SEMVER_TAG=v1.0.${{ github.run_number }}" >> $GITHUB_ENV
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -48,11 +48,10 @@ jobs:
           KO_DOCKER_REPO: ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/resume/backend
         run: |
           set -euo pipefail
-          REGISTRY=${OCI_REGION}.ocir.io
-          TENANCY=${OCI_TENANCY_NAMESPACE}
+          IMAGE_REPO="${OCI_REGION}.ocir.io/${OCI_TENANCY_NAMESPACE}/resume/backend"
           # Run ko publish and write a mapping of import path -> image reference to a YAML file
           IMAGE_REFS_FILE=/tmp/ko-image-refs.yaml
-          ko publish --platform=linux/amd64,linux/arm64 --tags ${COMMIT_SHORT_SHA},latest --image-refs ${IMAGE_REFS_FILE} --bare .
+          ko publish --platform=linux/amd64,linux/arm64 --tags "${SEMVER_TAG},${COMMIT_SHORT_SHA},latest" --image-refs ${IMAGE_REFS_FILE} --bare .
 
           # Parse first non-empty line from the image refs file (supports both 'importpath: image' and plain image formats)
           RAW_LINE=$(awk 'NF{print; exit}' ${IMAGE_REFS_FILE} | sed -e 's/^\s*//' -e 's/\s*$//')
@@ -69,10 +68,14 @@ jobs:
           fi
 
           echo "Discovered image ref: ${IMAGE_REF}"
-          # Optionally, extract tag for automation, but do not print extra debug lines.
-          IMAGE_TAG=$(echo "${IMAGE_REF}" | sed -E 's|.*:([0-9a-f]{7})(@.+)?$|\1|') || true
-          echo "Verifying image pull: ${IMAGE_REF}"
+          echo "Verifying digest pull: ${IMAGE_REF}"
           docker pull "${IMAGE_REF}"
-          echo "Image pull succeeded: ${IMAGE_REF}"
+          echo "Digest pull succeeded: ${IMAGE_REF}"
+          echo "Verifying immutable semver tag: ${IMAGE_REPO}:${SEMVER_TAG}"
+          docker pull "${IMAGE_REPO}:${SEMVER_TAG}"
+          echo "Semver tag pull succeeded: ${IMAGE_REPO}:${SEMVER_TAG}"
+          echo "Verifying immutable SHA tag: ${IMAGE_REPO}:${COMMIT_SHORT_SHA}"
+          docker pull "${IMAGE_REPO}:${COMMIT_SHORT_SHA}"
+          echo "SHA tag pull succeeded: ${IMAGE_REPO}:${COMMIT_SHORT_SHA}"
           # Export for any following steps or job outputs if needed
           echo "image_ref=${IMAGE_REF}" >> $GITHUB_OUTPUT
