@@ -3,10 +3,18 @@ name: Build and push backend to OCIR
 on:
   push:
     branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      image_ref: ${{ steps.publish.outputs.image_ref }}
+      semver_tag: ${{ steps.vars.outputs.semver_tag }}
+      commit_short_sha: ${{ steps.vars.outputs.commit_short_sha }}
     env:
       OCI_REGION: ${{ secrets.OCI_REGION }}
       OCI_TENANCY_NAMESPACE: ${{ secrets.OCI_TENANCY_NAMESPACE }}
@@ -18,9 +26,12 @@ jobs:
       - name: Set short git SHA and tag
         id: vars
         run: |
-          shortSha=$(git rev-parse --short ${{ github.sha }})
-          echo "COMMIT_SHORT_SHA=$shortSha" >> $GITHUB_ENV
-          echo "SEMVER_TAG=v1.0.${{ github.run_number }}" >> $GITHUB_ENV
+          shortSha=$(git rev-parse --short "${GITHUB_SHA}")
+          semverTag="v1.0.${GITHUB_RUN_NUMBER}"
+          echo "COMMIT_SHORT_SHA=$shortSha" >> "$GITHUB_ENV"
+          echo "SEMVER_TAG=$semverTag" >> "$GITHUB_ENV"
+          echo "commit_short_sha=$shortSha" >> "$GITHUB_OUTPUT"
+          echo "semver_tag=$semverTag" >> "$GITHUB_OUTPUT"
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -43,6 +54,7 @@ jobs:
           KO_DOCKER_REPO: ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/resume/backend
 
       - name: Publish image with ko
+        id: publish
         env:
           # Ensure the pushed image repo path matches the manifest targeting us-ashburn-1.ocir.io/.../resume/backend
           KO_DOCKER_REPO: ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/resume/backend
@@ -51,7 +63,7 @@ jobs:
           IMAGE_REPO="${OCI_REGION}.ocir.io/${OCI_TENANCY_NAMESPACE}/resume/backend"
           # Run ko publish and write a mapping of import path -> image reference to a YAML file
           IMAGE_REFS_FILE=/tmp/ko-image-refs.yaml
-          ko publish --platform=linux/amd64,linux/arm64 --tags "${SEMVER_TAG},${COMMIT_SHORT_SHA},latest" --image-refs ${IMAGE_REFS_FILE} --bare .
+          ko publish --platform=linux/amd64,linux/arm64 --tags "${SEMVER_TAG},${COMMIT_SHORT_SHA}" --image-refs ${IMAGE_REFS_FILE} --bare .
 
           # Parse first non-empty line from the image refs file (supports both 'importpath: image' and plain image formats)
           RAW_LINE=$(awk 'NF{print; exit}' ${IMAGE_REFS_FILE} | sed -e 's/^\s*//' -e 's/\s*$//')
@@ -78,4 +90,4 @@ jobs:
           docker pull "${IMAGE_REPO}:${COMMIT_SHORT_SHA}"
           echo "SHA tag pull succeeded: ${IMAGE_REPO}:${COMMIT_SHORT_SHA}"
           # Export for any following steps or job outputs if needed
-          echo "image_ref=${IMAGE_REF}" >> $GITHUB_OUTPUT
+          echo "image_ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"

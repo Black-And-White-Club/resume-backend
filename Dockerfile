@@ -25,7 +25,7 @@ RUN apk add --no-cache build-base sqlite-libs
 RUN --mount=type=cache,target=/root/.cache/go-build go build -o /main/app .
 
 # Stage 2: Create a minimal runtime image
-FROM alpine:latest
+FROM alpine:3.22
 
 # Install runtime dependencies for SQLite 
 RUN apk --no-cache add sqlite-libs 
